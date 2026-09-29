@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>The Building That Changes</title>
+  <meta name="description" content="An architectural study — a scroll-driven walk through one building." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <link rel="preload" as="image" href="img1.jpg" media="(min-width: 701px)">
+  <link rel="preload" as="image" href="img1-m.jpg" media="(max-width: 700px)">
+
+  <style>
+    :root {
+      --bg: #0a0a09;
+      --text: #e8e5de;
+      --muted: #8a877f;
+      --line: rgba(232, 229, 222, 0.16);
+      --ease: cubic-bezier(.16, 1, .3, 1);
+      --vh: 100svh;
+      --mx: 0px;
+      --my: 0px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", Arial, sans-serif;
+      font-weight: 300;
+      overflow-x: hidden;
+    }
+
+    body.loading {
+      overflow: hidden;
+    }
+
+    /* ------------------------------
+       LOADER
+    ------------------------------ */
+
+    .loader {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 1s var(--ease), visibility 1s;
+    }
+
+    .loader.hide {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .loader-inner {
+      width: min(320px, 70vw);
+    }
+
+    .loader-title {
+      font-size: 11px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    .loader-line {
+      width: 100%;
+      height: 1px;
+      background: rgba(255,255,255,.15);
+      overflow: hidden;
+    }
+
+    .loader-progress {
+      width: 0%;
+      height: 100%;
+      background: var(--text);
+      transition: width .4s var(--ease);
+    }
+
+    /* ------------------------------
+       FIXED UI
+    ------------------------------ */
+
+    .ui {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    .project-name {
+      position: absolute;
+      top: 30px;
+      left: 34px;
+      font-size: 10px;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+    }
+
+    .project-name span {
+      color: var(--muted);
+    }
+
+    .counter {
+      position: absolute;
+      top: 30px;
+      right: 34px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 10px;
+      letter-spacing: .14em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .counter-line {
+      width: 42px;
+      height: 1px;
+      background: var(--line);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .counter-progress {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 0%;
+      background: var(--text);
+      transition: width .5s var(--ease);
+    }
+
+    /* UI goes dark over the light section */
+    .ui,
+    .ui .counter-progress {
+      transition: color .5s var(--ease), background-color .5s var(--ease);
+    }
+
+    .ui.on-light {
+      color: #111;
+    }
+
+    .ui.on-light .project-name span,
+    .ui.on-light .scroll-label {
+      color: #555;
+    }
+
+    .ui.on-light .counter-progress {
+      background: #111;
+    }
+
+    .ui.on-light .counter-line,
+    .ui.on-light .scroll-arrow {
+      border-color: rgba(0,0,0,.2);
+      background-color: rgba(0,0,0,.15);
+    }
+
+    .ui.on-light .scroll-arrow {
+      background-color: transparent;
+    }
+
+    .scroll-label {
+      position: absolute;
+      bottom: 30px;
+      left: 34px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 9px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      transition: opacity .6s var(--ease), color .5s var(--ease);
+    }
+
+    .scroll-label.hidden {
+      opacity: 0;
+    }
+
+    .scroll-arrow {
+      width: 20px;
+      height: 20px;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: arrowMove 2s infinite var(--ease);
+    }
+
+    @keyframes arrowMove {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(5px); }
+    }
+
+    /* ------------------------------
+       HERO
+    ------------------------------ */
+
+    .hero {
+      height: var(--vh);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-image {
+      position: absolute;
+      inset: -5%;
+      background: url("img1.jpg") center / cover no-repeat;
+      will-change: transform;
+    }
+
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(0,0,0,.30) 0%,
+          rgba(0,0,0,.08) 40%,
+          rgba(0,0,0,.50) 100%
+        );
+    }
+
+    .hero-content {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%;
+      text-align: center;
+    }
+
+    .hero-kicker {
+      font-size: 9px;
+      letter-spacing: .3em;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+      opacity: 0;
+      transition: opacity 1.2s .3s var(--ease);
+    }
+
+    .ready .hero-kicker {
+      opacity: .75;
+    }
+
+    .hero-title {
+      font-size: clamp(44px, 8vw, 120px);
+      line-height: .9;
+      letter-spacing: -.055em;
+      font-weight: 300;
+      text-transform: uppercase;
+      text-shadow: 0 2px 40px rgba(0,0,0,.25);
+    }
+
+    .hero-title div {
+      overflow: hidden;
+    }
+
+    .hero-title span {
+      display: block;
+      transform: translateY(110%);
+    }
+
+    /* starts only when the loader is gone */
+    .ready .hero-title span {
+      animation: reveal 1.4s .15s var(--ease) forwards;
+    }
+
+    .ready .hero-title div:nth-child(2) span {
+      animation-delay: .3s;
+    }
+
+    @keyframes reveal {
+      to { transform: translateY(0); }
+    }
+
+    /* ------------------------------
+       EXPERIENCE
+    ------------------------------ */
+
+    .experience {
+      position: relative;
+    }
+
+    .section {
+      height: 180vh;
+      height: 180svh;
+      position: relative;
+    }
+
+    .sticky {
+      height: var(--vh);
+      position: sticky;
+      top: 0;
+      overflow: hidden;
+    }
+
+    .image-wrap {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    .image {
+      position: absolute;
+      inset: -5%;
+      background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
+      transform: scale(1.08);
+      will-change: transform;
+    }
+
+    .image::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(0,0,0,.14),
+          rgba(0,0,0,.04) 45%,
+          rgba(0,0,0,.55)
+        );
+    }
+
+    /* images — one building, one series */
+
+    .s-threshold .image {
+      background-image: url("img1.jpg");
+      background-position: 50% 62%;
+      transform-origin: 50% 62%;   /* the doorway */
+    }
+    .s-distance .image { background-image: url("img2.jpg"); }
+    .s-light    .image { background-image: url("img3.jpg"); background-position: 42% 60%; }
+    .s-ascend   .image { background-image: url("img4.jpg"); }
+    .s-void     .image { background-image: url("img5.jpg"); background-position: 62% 50%; }
+    .s-horizon  .image { background-image: url("img6.jpg"); }
+
+    /* ------------------------------
+       SECTION CONTENT
+    ------------------------------ */
+
+    .section-info {
+      position: absolute;
+      left: 34px;
+      bottom: 42px;
+      z-index: 3;
+      max-width: 420px;
+      will-change: transform, opacity;
+    }
+
+    .section-number {
+      font-size: 9px;
+      letter-spacing: .2em;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      font-size: clamp(42px, 6vw, 90px);
+      line-height: .9;
+      letter-spacing: -.05em;
+      font-weight: 300;
+      text-transform: uppercase;
+      margin-bottom: 26px;
+    }
+
+    .section-description {
+      max-width: 330px;
+      font-size: 12px;
+      line-height: 1.7;
+      color: rgba(232,229,222,.78);
+    }
+
+    /* ------------------------------
+       LIGHT SECTION
+    ------------------------------ */
+
+    .light-section {
+      background: #d8d4ca;
+      color: #111;
+    }
+
+    .light-section .image {
+      mix-blend-mode: multiply;
+      opacity: .9;
+    }
+
+    /* light fade under dark text instead of the dark one */
+    .light-section .image::after {
+      background: none;
+    }
+
+    .light-section .sticky::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(216,212,202,0) 45%,
+          rgba(216,212,202,.72) 78%,
+          rgba(216,212,202,.9) 100%
+        );
+    }
+
+    .light-section .section-number {
+      color: #666;
+    }
+
+    .light-section .section-description {
+      color: rgba(0,0,0,.66);
+    }
+
+    /* ------------------------------
+       FINAL — the same facade, after dark
+    ------------------------------ */
+
+    .final {
+      min-height: var(--vh);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .final-image {
+      position: absolute;
+      inset: 0;
+      background: url("img1.jpg") center / cover no-repeat;
+      filter: brightness(.5) saturate(.55) contrast(1.08);
+      transform: scale(1.04);
+    }
+
+    .final-image::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(24,32,58,.55) 0%,
+          rgba(40,34,48,.25) 45%,
+          rgba(0,0,0,.55) 100%
+        );
+      mix-blend-mode: normal;
+    }
+
+    .final-content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      width: 90%;
+    }
+
+    .final-kicker {
+      font-size: 9px;
+      letter-spacing: .3em;
+      text-transform: uppercase;
+      margin-bottom: 30px;
+      opacity: .7;
+    }
+
+    .final-title {
+      font-size: clamp(40px, 7vw, 110px);
+      line-height: .88;
+      letter-spacing: -.06em;
+      text-transform: uppercase;
+      font-weight: 300;
+    }
+
+    .final-footer {
+      position: absolute;
+      bottom: 30px;
+      left: 34px;
+      right: 34px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      letter-spacing: .15em;
+      color: rgba(232,229,222,.55);
+      text-transform: uppercase;
+    }
+
+    /* ------------------------------
+       RESPONSIVE
+    ------------------------------ */
+
+    @media (max-width: 700px) {
+
+      .hero-image,
+      .final-image                 { background-image: url("img1-m.jpg"); }
+      .s-threshold .image          { background-image: url("img1-m.jpg"); background-position: 50% 62%; }
+      .s-distance  .image          { background-image: url("img2-m.jpg"); }
+      .s-light     .image          { background-image: url("img3-m.jpg"); background-position: center; }
+      .s-ascend    .image          { background-image: url("img7.jpg"); }   /* vertical stair */
+      .s-void      .image          { background-image: url("img5-m.jpg"); background-position: center; }
+      .s-horizon   .image          { background-image: url("img6-m.jpg"); }
+
+      .project-name,
+      .counter {
+        top: 20px;
+      }
+
+      .project-name {
+        left: 20px;
+      }
+
+      .counter {
+        right: 20px;
+      }
+
+      .scroll-label {
+        left: 20px;
+        bottom: 20px;
+      }
+
+      .section-info {
+        left: 20px;
+        right: 20px;
+        bottom: 30px;
+      }
+
+      .section-description {
+        font-size: 12px;
+      }
+
+      .final-footer {
+        left: 20px;
+        right: 20px;
+        bottom: 20px;
+      }
+    }
+
+    /* ------------------------------
+       REDUCED MOTION
+    ------------------------------ */
+
+    @media (prefers-reduced-motion: reduce) {
+      .scroll-arrow { animation: none; }
+      .hero-title span { transform: none; }
+      .ready .hero-title span { animation: none; }
+      .loader, .hero-kicker { transition: none; }
+    }
+  </style>
+</head>
+
+<body class="loading">
+
+  <!-- LOADER -->
+
+  <div class="loader" aria-hidden="true">
+    <div class="loader-inner">
+      <div class="loader-title">Loading architecture</div>
+      <div class="loader-line">
+        <div class="loader-progress"></div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- FIXED UI -->
+
+  <div class="ui">
+
+    <div class="project-name">
+      THE BUILDING <span>/ THAT CHANGES</span>
+    </div>
+
+    <div class="counter">
+      <span class="current">00</span>
+      <div class="counter-line">
+        <div class="counter-progress"></div>
+      </div>
+      <span>07</span>
+    </div>
+
+    <div class="scroll-label">
+      <div class="scroll-arrow">↓</div>
+      <span>Move through the building</span>
+    </div>
+
+  </div>
+
+
+  <!-- HERO -->
+
+  <section class="hero" data-step="0">
+
+    <div class="hero-image"></div>
+    <div class="hero-overlay"></div>
+
+    <div class="hero-content">
+      <div class="hero-kicker">An architectural study — 2026</div>
+
+      <h1 class="hero-title">
+        <div><span>The Building</span></div>
+        <div><span>That Changes</span></div>
+      </h1>
+    </div>
+
+  </section>
+
+
+  <!-- EXPERIENCE -->
+
+  <main class="experience">
+
+    <!-- 01 -->
+    <section class="section s-threshold" data-step="1" data-zoom>
+      <div class="sticky">
+        <div class="image-wrap"><div class="image"></div></div>
+        <div class="section-info">
+          <div class="section-number">01 / 07</div>
+          <h2 class="section-title">The<br>Threshold</h2>
+          <p class="section-description">
+            A building is not entered at once.
+            It reveals itself gradually.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 -->
+    <section class="section s-distance" data-step="2">
+      <div class="sticky">
+        <div class="image-wrap"><div class="image"></div></div>
+        <div class="section-info">
+          <div class="section-number">02 / 07</div>
+          <h2 class="section-title">The<br>Distance</h2>
+          <p class="section-description">
+            Space becomes visible through movement.
+            The longer the corridor, the slower the eye.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 -->
+    <section class="section s-light light-section" data-step="3">
+      <div class="sticky">
+        <div class="image-wrap"><div class="image"></div></div>
+        <div class="section-info">
+          <div class="section-number">03 / 07</div>
+          <h2 class="section-title">The<br>Light</h2>
+          <p class="section-description">
+            The light moves.
+            The building does not.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 -->
+    <section class="section s-ascend" data-step="4">
+      <div class="sticky">
+        <div class="image-wrap"><div class="image"></div></div>
+        <div class="section-info">
+          <div class="section-number">04 / 07</div>
+          <h2 class="section-title">Ascend</h2>
+          <p class="section-description">
+            Vertical movement changes the
+            relationship between body and space.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 -->
+    <section class="section s-void" data-step="5">
+      <div class="sticky">
+        <div class="image-wrap"><div class="image"></div></div>
+        <div class="section-info">
+          <div class="section-number">05 / 07</div>
+          <h2 class="section-title">The<br>Void</h2>
+          <p class="section-description">
+            A room without a center.
+            Architecture becomes scale.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 -->
+    <section class="section s-horizon" data-step="6">
+      <div class="sticky">
+        <div class="image-wrap"><div class="image"></div></div>
+        <div class="section-info">
+          <div class="section-number">06 / 07</div>
+          <h2 class="section-title">The<br>Horizon</h2>
+          <p class="section-description">
+            The building opens.
+            The interior finally meets the sky.
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+
+  <!-- FINAL -->
+
+  <section class="final" data-step="7">
+
+    <div class="final-image"></div>
+
+    <div class="final-content">
+      <div class="final-kicker">07 / 07 — Outside</div>
+      <h2 class="final-title">
+        The Building<br>
+        Changes When<br>
+        You Leave It.
+      </h2>
+    </div>
+
+    <div class="final-footer">
+      <span>Architecture / Digital Experience</span>
+      <span>2026</span>
+    </div>
+
+  </section>
+
+
+  <script>
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const isMobile = () => window.matchMedia("(max-width: 700px)").matches;
+
+    /* ------------------------------
+       LOADER — tied to real image loading
+    ------------------------------ */
+
+    const loader = document.querySelector(".loader");
+    const loaderBar = document.querySelector(".loader-progress");
+
+    // first screens: hero/threshold + corridor
+    const firstImages = isMobile()
+      ? ["img1-m.jpg", "img2-m.jpg"]
+      : ["img1.jpg", "img2.jpg"];
+
+    let loaded = 0;
+    let finished = false;
+
+    function setBar(p) {
+      loaderBar.style.width = p + "%";
+    }
+
+    function finishLoading() {
+      if (finished) return;
+      finished = true;
+      setBar(100);
+      setTimeout(() => {
+        loader.classList.add("hide");
+        document.body.classList.remove("loading");
+        document.body.classList.add("ready");   // hero reveal starts here
+      }, reduceMotion ? 0 : 350);
+    }
+
+    setBar(8);
+
+    firstImages.forEach(src => {
+      const img = new Image();
+      const done = () => {
+        loaded++;
+        setBar(8 + (loaded / firstImages.length) * 92);
+        if (loaded === firstImages.length) finishLoading();
+      };
+      img.onload = done;
+      img.onerror = done;
+      img.src = src;
+    });
+
+    // safety net for slow connections
+    setTimeout(finishLoading, 6000);
+
+
+    /* ------------------------------
+       SCROLL
+    ------------------------------ */
+
+    const sections = [...document.querySelectorAll(".section")];
+    const steps = [...document.querySelectorAll("[data-step]")];
+    const hero = document.querySelector(".hero");
+    const heroImage = document.querySelector(".hero-image");
+    const ui = document.querySelector(".ui");
+    const scrollLabel = document.querySelector(".scroll-label");
+    const current = document.querySelector(".current");
+    const counterProgress = document.querySelector(".counter-progress");
+
+    const TOTAL = 7;
+    let ticking = false;
+    let lastStep = -1;
+
+    function clamp(v, a = 0, b = 1) {
+      return Math.max(a, Math.min(b, v));
+    }
+
+    function updateScroll() {
+      const vh = window.innerHeight;
+      const center = vh / 2;
+      const mouse = "translate(var(--mx), var(--my))";
+
+      /* hero */
+      const heroRect = hero.getBoundingClientRect();
+      const heroP = clamp(-heroRect.top / vh);
+
+      if (!reduceMotion) {
+        heroImage.style.transform =
+          `${mouse} scale(${1.03 + heroP * .08}) translateY(${heroP * 30}px)`;
+      }
+
+      scrollLabel.classList.toggle("hidden", heroP > .15);
+
+      /* sections: progress = 0 when sticky starts, 1 when it ends */
+      sections.forEach(section => {
+        const rect = section.getBoundingClientRect();
+        if (rect.bottom < -vh || rect.top > vh * 2) return;   // off-screen
+
+        const p = clamp(-rect.top / (rect.height - vh));
+        const image = section.querySelector(".image");
+        const info = section.querySelector(".section-info");
+
+        if (!reduceMotion) {
+          if (section.hasAttribute("data-zoom")) {
+            // walk into the doorway
+            const scale = 1.08 + Math.pow(p, 1.6) * 1.1;
+            image.style.transform = `${mouse} scale(${scale})`;
+          } else {
+            const translate = (p - .5) * -90;
+            const scale = 1.08 + Math.abs(p - .5) * .035;
+            image.style.transform =
+              `${mouse} scale(${scale}) translateY(${translate}px)`;
+          }
+
+          info.style.transform = `translateY(${(p - .5) * -25}px)`;
+        }
+
+        // fade in early, hold, fade out near the end
+        const fadeIn = clamp(p / .15);
+        const fadeOut = clamp((1 - p) / .2);
+        info.style.opacity = Math.min(fadeIn, fadeOut) * .85 + .15;
+      });
+
+      /* counter: hero = 00, sections = 01–06, final = 07 */
+      let step = 0;
+      steps.forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (r.top < center && r.bottom > center) step = +el.dataset.step;
+      });
+
+      if (step !== lastStep) {
+        lastStep = step;
+        current.textContent = String(step).padStart(2, "0");
+        counterProgress.style.width = `${(step / TOTAL) * 100}%`;
+        ui.classList.toggle(
+          "on-light",
+          !!document.querySelector(`[data-step="${step}"].light-section`)
+        );
+      }
+
+      ticking = false;
+    }
+
+    function requestUpdate() {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(updateScroll);
+      }
+    }
+
+    window.addEventListener("scroll", requestUpdate, { passive: true });
+    window.addEventListener("resize", requestUpdate);
+    updateScroll();
+
+
+    /* ------------------------------
+       MOUSE PARALLAX — via CSS vars inside transform
+    ------------------------------ */
+
+    if (!reduceMotion && window.matchMedia("(pointer: fine)").matches) {
+      const root = document.documentElement;
+      let tx = 0, ty = 0, x = 0, y = 0, raf = null;
+
+      window.addEventListener("mousemove", e => {
+        tx = (e.clientX / window.innerWidth - .5) * -14;
+        ty = (e.clientY / window.innerHeight - .5) * -10;
+        if (!raf) raf = requestAnimationFrame(tick);
+      });
+
+      function tick() {
+        x += (tx - x) * .08;
+        y += (ty - y) * .08;
+        root.style.setProperty("--mx", x.toFixed(2) + "px");
+        root.style.setProperty("--my", y.toFixed(2) + "px");
+        updateScroll();
+        raf = (Math.abs(tx - x) > .05 || Math.abs(ty - y) > .05)
+          ? requestAnimationFrame(tick)
+          : null;
+      }
+    }
+
+  </script>
+
+</body>
+</html>
